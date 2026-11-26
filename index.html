@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Video Quiz</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --paper:#f3f1ec; --ink:#1b2430; --muted:#5c6673; --line:#d9d5cb;
+  --good:#1f8a5b; --good-bg:#e1f1e8; --bad:#c23b4e; --bad-bg:#f8e3e6; --hl:#f0c44c;
+  --card:#fbfaf7;
+}
+@media (prefers-color-scheme:dark){
+  :root{--paper:#14191f; --ink:#ecebe6; --muted:#98a1ac; --line:#2c343d; --card:#1b222a;
+    --good:#4cc38a; --good-bg:#17332a; --bad:#ff7a8b; --bad-bg:#3a1f25;}
+}
+*{box-sizing:border-box}
+html{background:var(--paper)}
+body{margin:0;color:var(--ink);font-family:"Newsreader","Cairo",Georgia,serif;font-size:18px;line-height:1.55;
+  padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
+main{max-width:720px;margin:0 auto;padding:48px 20px 80px}
+h1,h2,button,.tag{font-family:"Bricolage Grotesque","Cairo",system-ui,sans-serif}
+h1{font-size:clamp(2.2rem,6vw,3.4rem);line-height:1;margin:0 0 12px;letter-spacing:-.02em;font-weight:800}
+h1 mark{background:var(--hl);color:#1b2430;padding:0 .15em}
+.lead{color:var(--muted);margin:0 0 28px;max-width:52ch}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+input,select{font:inherit;padding:14px 16px;border:2px solid var(--ink);background:var(--card);color:var(--ink);border-radius:10px}
+input[type=url]{flex:1 1 280px;min-width:0}
+button{font-weight:700;font-size:1rem;padding:14px 22px;border:2px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:10px;cursor:pointer}
+button:disabled{opacity:.4;cursor:not-allowed}
+button.ghost{background:transparent;color:var(--ink)}
+:focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.err{color:var(--bad);margin-top:14px;font-weight:600}
+.hidden{display:none}
+.bar{height:6px;background:var(--line);border-radius:3px;margin:0 0 28px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ink);transition:width .35s}
+.meta{display:flex;justify-content:space-between;color:var(--muted);font-family:"Bricolage Grotesque",sans-serif;font-size:.9rem;margin-bottom:8px}
+h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
+.opt{display:block;width:100%;text-align:start;margin:0 0 10px;padding:14px 16px;background:var(--card);color:var(--ink);
+  border:2px solid var(--line);font-family:"Newsreader","Cairo",serif;font-weight:400;font-size:1.05rem;border-radius:10px}
+.opt:hover:not(:disabled){border-color:var(--ink)}
+.opt.wrong{border-color:var(--bad);background:var(--bad-bg);opacity:1;text-decoration:line-through;text-decoration-thickness:1px}
+.opt.right{border-color:var(--good);background:var(--good-bg);opacity:1}
+.opt:disabled{cursor:default;opacity:1}
+.note{margin:18px 0;padding:16px 18px;border-inline-start:5px solid var(--bad);background:var(--bad-bg);border-radius:10px}
+.note.ok{border-inline-start-color:var(--good);background:var(--good-bg)}
+.note b{font-family:"Bricolage Grotesque",sans-serif}
+.note a{color:inherit;font-weight:600}
+.summary{background:var(--card);border:1px solid var(--line);padding:16px 18px;border-radius:10px;margin:0 0 28px}
+.big{font-family:"Bricolage Grotesque",sans-serif;font-size:4rem;font-weight:800;line-height:1}
+.spin{display:inline-block;width:14px;height:14px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px;margin-right:8px}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}.bar i{transition:none}}
+</style>
+</head>
+<body>
+<main>
+
+<section id="home">
+  <h1>Watch it. Then <mark>prove</mark> you got it.</h1>
+  <p class="lead">Paste a YouTube lesson. The AI watches the whole video and writes a quiz. Wrong answers are explained, and you can't move on until you get the question right.</p>
+  <div class="row">
+    <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=..." aria-label="YouTube link">
+    <select id="count" aria-label="Number of questions">
+      <option value="5">5 questions</option>
+      <option value="8" selected>8 questions</option>
+      <option value="12">12 questions</option>
+    </select>
+    <button id="go">Make quiz</button>
+  </div>
+  <div id="err" class="err hidden" role="alert"></div>
+</section>
+
+<section id="quiz" class="hidden">
+  <div class="meta"><span id="round"></span><span id="count-label"></span></div>
+  <div class="bar"><i id="prog"></i></div>
+  <h2 id="q" dir="auto"></h2>
+  <div id="opts"></div>
+  <div id="note" class="note hidden" aria-live="polite" dir="auto"></div>
+  <button id="next" class="hidden">Next question</button>
+</section>
+
+<section id="done" class="hidden">
+  <div class="big" id="score"></div>
+  <p id="verdict" class="lead"></p>
+  <div class="summary" id="sum" dir="auto"></div>
+  <div class="row">
+    <button id="again">Quiz another video</button>
+  </div>
+</section>
+
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let quiz, videoUrl, queue, idx, missed, firstTry, total, roundNo, current, order;
+
+const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+const show = (id) => ["home", "quiz", "done"].forEach((x) => $(x).classList.toggle("hidden", x !== id));
+
+$("go").onclick = async () => {
+  const url = $("url").value.trim();
+  $("err").classList.add("hidden");
+  $("go").disabled = true;
+  $("go").innerHTML = '<span class="spin"></span>Watching the video...';
+  try {
+    const r = await fetch("/api/quiz", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url, count: $("count").value }),
+    });
+    const raw = await r.text();
+    let data;
+    try { data = JSON.parse(raw); } catch {
+      throw new Error("The backend is not running here (got a web page instead of quiz data). Open the deployed Vercel link, or run with 'vercel dev'. Status: " + r.status);
+    }
+    if (!r.ok) throw new Error(data.error || "Something went wrong");
+    quiz = data; videoUrl = url; start();
+  } catch (e) {
+    $("err").textContent = e.message;
+    $("err").classList.remove("hidden");
+  } finally {
+    $("go").disabled = false;
+    $("go").textContent = "Make quiz";
+  }
+};
+
+function start() {
+  total = quiz.questions.length;
+  firstTry = 0; roundNo = 1;
+  runRound(quiz.questions.map((q, i) => ({ ...q, id: i })), false);
+}
+
+function runRound(list, isReview) {
+  queue = list; idx = 0; missed = [];
+  $("round").textContent = isReview ? "Review round: the ones you missed" : "Round 1";
+  show("quiz");
+  ask();
+}
+
+function ask() {
+  current = queue[idx];
+  order = shuffle([0, 1, 2, 3]);   // options reshuffled every time
+  current.slipped = false;
+  $("q").textContent = current.question;
+  $("count-label").textContent = `Question ${idx + 1} of ${queue.length}`;
+  $("prog").style.width = (idx / queue.length) * 100 + "%";
+  $("note").classList.add("hidden");
+  $("next").classList.add("hidden");
+  const box = $("opts"); box.innerHTML = "";
+  order.forEach((orig) => {
+    const b = document.createElement("button");
+    b.className = "opt"; b.dir = "auto"; b.textContent = current.options[orig]; b.dataset.o = orig;
+    b.onclick = () => pick(b, orig);
+    box.appendChild(b);
+  });
+}
+
+function link(q) {
+  return `<a href="${videoUrl}${videoUrl.includes("?") ? "&" : "?"}t=${Math.floor(q.seconds || 0)}s" target="_blank" rel="noopener">Rewatch at ${fmt(q.seconds || 0)}</a>`;
+}
+
+function pick(btn, orig) {
+  const note = $("note");
+  if (orig === current.answerIndex) {
+    btn.classList.add("right");
+    [...$("opts").children].forEach((b) => (b.disabled = true));
+    if (!current.slipped && !current.isRetry) firstTry++;
+    if (current.slipped && !missed.includes(current)) missed.push(current);
+    note.className = "note ok";
+    note.innerHTML = `<b>Correct.</b> ${current.explanations[orig]} ${link(current)}`;
+    $("next").textContent = idx + 1 < queue.length ? "Next question" : "Finish";
+    $("next").classList.remove("hidden");
+    $("next").focus();
+  } else {
+    current.slipped = true;
+    btn.classList.add("wrong"); btn.disabled = true;
+    note.className = "note";
+    note.innerHTML = `<b>Not quite.</b> ${current.explanations[orig]} <br>Try again. ${link(current)}`;
+  }
+  note.classList.remove("hidden");
+}
+
+$("next").onclick = () => {
+  idx++;
+  if (idx < queue.length) return ask();
+  if (missed.length) {
+    roundNo++;
+    const retry = missed.map((q) => ({ ...q, isRetry: true }));
+    return runRound(retry, true);
+  }
+  finish();
+};
+
+function finish() {
+  $("prog").style.width = "100%";
+  show("done");
+  $("score").textContent = `${firstTry}/${total}`;
+  $("verdict").textContent = firstTry === total
+    ? "Perfect on the first try. You understood this video."
+    : "You got every question right in the end, including the ones you missed. That is how it sticks.";
+  $("sum").innerHTML = `<b>${quiz.title || "Video"}</b><br>${quiz.summary || ""}`;
+}
+
+$("again").onclick = () => { $("url").value = ""; show("home"); };
+$("url").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
+</script>
+</body>
+</html>
+
