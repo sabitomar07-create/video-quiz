@@ -19,9 +19,12 @@
 }
 *{box-sizing:border-box}
 html{background:var(--paper)}
-body{margin:0;color:var(--ink);font-family:"Newsreader","Cairo",Georgia,serif;font-size:18px;line-height:1.55;
+body{margin:0;color:var(--ink);font-family:"Newsreader","Cairo",Georgia,serif;font-size:18px;line-height:1.55;background:transparent;
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
-main{max-width:720px;margin:0 auto;padding:48px 20px 80px}
+.video-backdrop{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:var(--paper)}
+.video-backdrop video{width:100%;height:100%;object-fit:cover;display:block}
+.video-backdrop::after{content:"";position:absolute;inset:0;background:var(--paper);opacity:.78}
+main{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:48px 20px 80px}
 h1,h2,button,.tag{font-family:"Bricolage Grotesque","Cairo",system-ui,sans-serif}
 h1{font-size:clamp(2.2rem,6vw,3.4rem);line-height:1;margin:0 0 12px;letter-spacing:-.02em;font-weight:800}
 h1 mark{background:var(--hl);color:#1b2430;padding:0 .15em}
@@ -54,9 +57,15 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
 .spin{display:inline-block;width:14px;height:14px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px;margin-right:8px}
 @keyframes s{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}.bar i{transition:none}}
+@media (prefers-reduced-motion:reduce){.video-backdrop video{display:none}}
 </style>
 </head>
 <body>
+<div class="video-backdrop" aria-hidden="true">
+  <video autoplay muted loop playsinline preload="metadata">
+    <source src="/background.mp4" type="video/mp4">
+  </video>
+</div>
 <main>
 
 <section id="home">
