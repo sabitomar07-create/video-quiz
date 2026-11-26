@@ -1,5 +1,6 @@
-const MODEL = "gemini-3.5-flash-lite";
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
+const MODELS = ["gemini-3.5-flash-lite", "gemini-3.8-flash"];
+const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+const REQUEST_TIMEOUT_MS = 85_000;
 
 function send(res, status, body) {
   res.status(status).setHeader("Content-Type", "application/json; charset=utf-8").send(JSON.stringify(body));
@@ -20,6 +21,28 @@ function parseModelJson(text) {
   return JSON.parse(cleaned);
 }
 
+const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
+async function requestQuiz({ apiKey, model, url, prompt }) {
+  const response = await fetch(`${GEMINI_BASE_URL}/${model}:generateContent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+    body: JSON.stringify({
+      contents: [{
+        role: "user",
+        parts: [
+          { text: prompt },
+          { fileData: { mimeType: "video/*", fileUri: url } },
+        ],
+      }],
+      generationConfig: { responseMimeType: "application/json", temperature: 0.3 },
+    }),
+    signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
+  });
+  const payload = await response.json().catch(() => ({}));
+  return { response, payload };
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.setHeader("Allow", "POST");
@@ -37,26 +60,37 @@ export default async function handler(req, res) {
   const prompt = `Watch and understand the full public YouTube lesson in the attached video. Create exactly ${count} useful multiple-choice questions that test the lesson's real concepts, not trivia about the video. Use the same language as the lesson for every question, option, explanation, title, and summary. For each question, provide four distinct options, answerIndex from 0 to 3, and an explanations array of four short entries explaining why each corresponding option is wrong or correct using the lesson. Give the approximate timestamp in seconds where the concept is explained. Return only valid JSON with this shape: {"title":"...","summary":"...","questions":[{"question":"...","options":["...","...","...","..."],"answerIndex":0,"explanations":["...","...","...","..."],"seconds":0}]}.`;
 
   try {
-    const response = await fetch(GEMINI_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-      body: JSON.stringify({
-        contents: [{
-          role: "user",
-          parts: [
-            { text: prompt },
-            { fileData: { mimeType: "video/*", fileUri: url } },
-          ],
-        }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0.3 },
-      }),
-      signal: AbortSignal.timeout(240_000),
-    });
+    let payload;
+    let lastOverload;
+    let generated = false;
 
-    const payload = await response.json().catch(() => ({}));
-    if (!response.ok) {
-      const message = payload?.error?.message || "Gemini could not process this video.";
-      return send(res, response.status === 429 ? 429 : 502, { error: message });
+    for (const [modelIndex, model] of MODELS.entries()) {
+      const attempts = modelIndex === 0 ? 2 : 1;
+      for (let attempt = 0; attempt < attempts; attempt++) {
+        const result = await requestQuiz({ apiKey, model, url, prompt });
+        if (result.response.ok) {
+          payload = result.payload;
+          generated = true;
+          break;
+        }
+
+        if (result.response.status === 503) {
+          lastOverload = result.payload?.error?.message;
+          if (attempt + 1 < attempts) await wait(1200);
+          continue;
+        }
+
+        const message = result.payload?.error?.message || "Gemini could not process this video.";
+        return send(res, result.response.status === 429 ? 429 : 502, { error: message });
+      }
+      if (generated) break;
+    }
+
+    if (!generated) {
+      return send(res, 503, {
+        error: "Gemini is temporarily overloaded. Your key is configured; please wait a minute and try again.",
+        detail: lastOverload || undefined,
+      });
     }
 
     const text = payload?.candidates?.[0]?.content?.parts?.map((part) => part.text || "").join("");
