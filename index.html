@@ -22,8 +22,8 @@ html{background:var(--paper)}
 body{margin:0;color:var(--ink);font-family:"Newsreader","Cairo",Georgia,serif;font-size:18px;line-height:1.55;background:transparent;
   padding:env(safe-area-inset-top,0) 0 env(safe-area-inset-bottom,0)}
 .video-backdrop{position:fixed;inset:0;z-index:0;overflow:hidden;pointer-events:none;background:var(--paper)}
-.video-backdrop video{position:absolute;inset:0;width:100%;height:100%;min-width:100%;min-height:100%;object-fit:cover;object-position:center;display:block;transform:translateZ(0);-webkit-transform:translateZ(0)}
-.video-backdrop::after{content:"";position:absolute;inset:0;background:var(--paper);opacity:.48}
+.video-backdrop video{width:100%;height:100%;object-fit:cover;display:block}
+.video-backdrop::after{content:"";position:absolute;inset:0;background:var(--paper);opacity:.78}
 main{position:relative;z-index:1;max-width:720px;margin:0 auto;padding:48px 20px 80px}
 h1,h2,button,.tag{font-family:"Bricolage Grotesque","Cairo",system-ui,sans-serif}
 h1{font-size:clamp(2.2rem,6vw,3.4rem);line-height:1;margin:0 0 12px;letter-spacing:-.02em;font-weight:800}
@@ -57,13 +57,13 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
 .spin{display:inline-block;width:14px;height:14px;border:3px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .8s linear infinite;vertical-align:-2px;margin-right:8px}
 @keyframes s{to{transform:rotate(360deg)}}
 @media (prefers-reduced-motion:reduce){.spin{animation:none}.bar i{transition:none}}
-
+@media (prefers-reduced-motion:reduce){.video-backdrop video{display:none}}
 </style>
 </head>
 <body>
 <div class="video-backdrop" aria-hidden="true">
   <video autoplay muted loop playsinline preload="metadata">
-    <source src="/background.mp4?v=2" type="video/mp4">
+    <source src="/background.mp4" type="video/mp4">
   </video>
 </div>
 <main>
@@ -105,24 +105,6 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
 
 <script>
 const $ = (id) => document.getElementById(id);
-
-// Keep the decorative background video visible and retry playback on mobile.
-const bgVideo = document.querySelector(".video-backdrop video");
-if (bgVideo) {
-  bgVideo.muted = true;
-  bgVideo.defaultMuted = true;
-  bgVideo.playsInline = true;
-  const playBackground = () => {
-    const attempt = bgVideo.play();
-    if (attempt && typeof attempt.catch === "function") attempt.catch(() => {});
-  };
-  bgVideo.addEventListener("canplay", playBackground, { once: true });
-  document.addEventListener("visibilitychange", () => {
-    if (!document.hidden) playBackground();
-  });
-  playBackground();
-}
-
 let quiz, videoUrl, queue, idx, missed, firstTry, total, roundNo, current, order;
 
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
