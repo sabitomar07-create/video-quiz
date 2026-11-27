@@ -262,7 +262,7 @@ $("go").onclick = async () => {
     : '<span class="spin"></span>Reading your files...';
   try {
     const files = sourceMode === "upload" ? await Promise.all(selectedFiles.map(encodeFile)) : [];
-    const body = JSON.stringify({ url, files, count: $("count").value });
+    const body = JSON.stringify({ url, files, count: $(\"count\").value });
     if (new Blob([body]).size > 4 * 1024 * 1024) throw new Error("This upload is too large to send. Choose smaller files.");
     const r = await fetch("/api/quiz", {
       method: "POST",
@@ -274,7 +274,38 @@ $("go").onclick = async () => {
     try { data = JSON.parse(raw); } catch {
       throw new Error("The backend is not running here (got a web page instead of quiz data). Open the deployed Vercel link, or run with 'vercel dev'. Status: " + r.status);
     }
-    if (!r.ok) throw new Error(data.error || "Something went wrong");
+    if (!r.ok && r.status !== 202) throw new Error(data.error || "Something went wrong");
+
+    if (r.status === 202 && data.interactionId) {
+      const interactionId = data.interactionId;
+      const count = $("count").value;
+      const deadline = Date.now() + 30 * 60 * 1000;
+      let pollNumber = 0;
+      while (Date.now() < deadline) {
+        await new Promise((resolve) => setTimeout(resolve, 4000));
+        pollNumber++;
+        $("go").innerHTML = pollNumber % 3 === 0
+          ? '<span class="spin"></span>Checking the full lesson...'
+          : '<span class="spin"></span>Gemini is studying the video...';
+        const statusResponse = await fetch(`/api/quiz?id=${encodeURIComponent(interactionId)}&count=${encodeURIComponent(count)}`, {
+          method: "GET",
+          cache: "no-store",
+        });
+        const statusRaw = await statusResponse.text();
+        let statusData;
+        try { statusData = JSON.parse(statusRaw); } catch {
+          throw new Error("Couldn't read the video-processing status. Please try again.");
+        }
+        if (statusResponse.status === 202) continue;
+        if (statusResponse.status === 429 || statusResponse.status === 503) continue;
+        if (!statusResponse.ok) throw new Error(statusData.error || "Video analysis failed. Please try again.");
+        data = statusData;
+        break;
+      }
+      if (Date.now() >= deadline) throw new Error("This lesson is taking longer than expected. Please try again; the video may still be processing.");
+      if (!Array.isArray(data.questions)) throw new Error("Gemini finished but did not return a quiz. Please try again.");
+    }
+
     quiz = data; videoUrl = url || null; start();
   } catch (e) {
     $("err").textContent = e.message;
