@@ -95,7 +95,7 @@ function interactionText(interaction) {
     .flatMap((step) => step.content || [])
     .filter((part) => part.type === "text" && typeof part.text === "string")
     .map((part) => part.text);
-  return outputs.join("\\n").trim();
+  return outputs.join("\n").trim();
 }
 
 async function pollYoutubeInteraction(apiKey, id, count) {
@@ -171,7 +171,7 @@ export default async function handler(req, res) {
       const bytes = Buffer.byteLength(file.text, "utf8");
       if (bytes > MAX_TEXT_BYTES) return send(res, 400, { error: "Each TXT file must be 250 KB or smaller." });
       totalBytes += bytes;
-      parts.push({ text: `Uploaded text file: ${name}\\n\\n${file.text}` });
+      parts.push({ text: `Uploaded text file: ${name}\n\n${file.text}` });
     } else {
       if (typeof file.data !== "string" || !file.data || file.data.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(file.data)) {
         return send(res, 400, { error: `${name} couldn't be read. Try selecting it again.` });
