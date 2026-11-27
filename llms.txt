@@ -1,0 +1,24 @@
+# Video Quiz
+
+> Video Quiz turns YouTube videos and uploaded study materials into interactive AI-generated multiple-choice quizzes.
+
+## Website
+- Homepage: https://video-quiz-rose.vercel.app/
+
+## What it does
+- Generates multiple-choice quizzes from YouTube videos.
+- Accepts supported PDF, TXT, and image study materials.
+- Provides explanations for answer choices.
+- Returns missed questions in a review round.
+- Links video questions to approximate timestamps when available.
+
+## How to use
+1. Open the homepage.
+2. Paste a YouTube video URL or choose supported study files/photos.
+3. Select 5, 8, or 12 questions.
+4. Select Make quiz and answer the questions.
+
+## Notes
+- Video analysis time and availability depend on the source video and AI service.
+- Upload size and file-count limits are shown in the app.
+- Do not describe the service as guaranteeing perfect accuracy or unlimited video length.
