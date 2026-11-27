@@ -102,7 +102,7 @@ async function pollYoutubeInteraction(apiKey, id, count) {
   if (typeof id !== "string" || !/^v1_[A-Za-z0-9_-]+$/.test(id)) {
     return { status: 400, body: { error: "Invalid video processing ID." } };
   }
-  if (![5, 8, 12].includes(count)) return { status: 400, body: { error: "Invalid quiz size." } };
+  if (![5, 8, 12, 25].includes(count)) return { status: 400, body: { error: "Invalid quiz size." } };
   const response = await fetch(`${INTERACTIONS_URL}/${encodeURIComponent(id)}`, {
     headers: { "x-goog-api-key": apiKey },
     signal: AbortSignal.timeout(20_000),
@@ -146,7 +146,7 @@ export default async function handler(req, res) {
   if (url && files.length) return send(res, 400, { error: "Choose a YouTube link or uploaded files, not both." });
   if (url && !isYoutubeUrl(url)) return send(res, 400, { error: "Enter a valid YouTube video link." });
   if (!url && !files.length) return send(res, 400, { error: "Add a YouTube link or upload a file or photo." });
-  if (![5, 8, 12].includes(count)) return send(res, 400, { error: "Choose 5, 8, or 12 questions." });
+  if (![5, 8, 12, 25].includes(count)) return send(res, 400, { error: "Choose 5, 8, 12, or 25 questions." });
   if (files.length > MAX_FILE_COUNT) return send(res, 400, { error: `Upload up to ${MAX_FILE_COUNT} files at a time.` });
 
   if (url) {
