@@ -142,7 +142,7 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
       <strong>Choose files or photos</strong>
       <span>or drag them here</span>
     </label>
-    <p class="upload-help">JPG, PNG, WEBP, HEIC, PDF, or TXT · up to 5 files · 2.5 MB total · TXT up to 250 KB</p>
+    <p class="upload-help">JPG, PNG, WEBP, HEIC, PDF, or TXT · up to 5 files · 15 MB total · TXT up to 250 KB</p>
     <div id="file-list" class="file-list" aria-live="polite"></div>
     <p id="upload-error" class="upload-error hidden" role="alert"></p>
   </div>
@@ -223,12 +223,13 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
 
 </main>
 
-<script>
+<script type="module">
+import { uploadPresigned } from "https://esm.sh/@vercel/blob@2.4.0/client?bundle";
 const $ = (id) => document.getElementById(id);
 let quiz, videoUrl, queue, idx, missed, firstTry, total, roundNo, current, order;
 let sourceMode = "youtube";
 let selectedFiles = [];
-const MAX_UPLOAD_BYTES = 2.5 * 1024 * 1024;
+const MAX_UPLOAD_BYTES = 15 * 1024 * 1024;
 const FILE_TYPES = {
   "image/jpeg": [".jpg", ".jpeg"],
   "image/png": [".png"],
@@ -284,7 +285,7 @@ function setFiles(fileList) {
     error.textContent = "Use JPG, PNG, WEBP, HEIC, PDF, or TXT files.";
     error.classList.remove("hidden");
   } else if (files.reduce((sum, file) => sum + file.size, 0) > MAX_UPLOAD_BYTES) {
-    error.textContent = "These files are over the 2.5 MB total limit. Choose smaller files.";
+    error.textContent = "These files are over the 15 MB total limit. Choose smaller files.";
     error.classList.remove("hidden");
   } else {
     selectedFiles = files;
@@ -313,18 +314,16 @@ function renderFiles() {
   }
 }
 
-async function encodeFile(file) {
+async function uploadFile(file) {
   const mimeType = mimeFor(file);
-  if (mimeType === "text/plain") {
-    return { name: file.name, mimeType, text: await file.text() };
-  }
-  const data = await new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onerror = () => reject(new Error(`Couldn't read ${file.name}. Try selecting it again.`));
-    reader.onload = () => resolve(String(reader.result).split(",", 2)[1] || "");
-    reader.readAsDataURL(file);
+  const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(-120) || "upload";
+  const pathname = `quiz-uploads/${crypto.randomUUID()}-${safeName}`;
+  const blob = await uploadPresigned(pathname, file, {
+    access: "private",
+    handleUploadUrl: "/api/upload",
+    contentType: mimeType,
   });
-  return { name: file.name, mimeType, data };
+  return { name: file.name, mimeType, pathname: blob.pathname, size: file.size };
 }
 
 $("youtube-tab").onclick = () => setSourceMode("youtube");
@@ -360,10 +359,15 @@ $("go").onclick = async () => {
   $("go").innerHTML = sourceMode === "youtube"
     ? '<span class="spin"></span>Watching the video...'
     : '<span class="spin"></span>Reading your files...';
+  const uploadedFiles = [];
   try {
-    const files = sourceMode === "upload" ? await Promise.all(selectedFiles.map(encodeFile)) : [];
+    if (sourceMode === "upload") {
+      for (const file of selectedFiles) {
+        uploadedFiles.push(await uploadFile(file));
+      }
+    }
+    const files = uploadedFiles;
     const body = JSON.stringify({ url, files, count: $("count").value });
-    if (new Blob([body]).size > 4 * 1024 * 1024) throw new Error("This upload is too large to send. Choose smaller files.");
     const r = await fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -408,6 +412,13 @@ $("go").onclick = async () => {
 
     quiz = data; videoUrl = url || null; start();
   } catch (e) {
+    if (uploadedFiles.length) {
+      fetch("/api/cleanup", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pathnames: uploadedFiles.map((file) => file.pathname) }),
+      }).catch(() => {});
+    }
     $("err").textContent = e.message;
     $("err").classList.remove("hidden");
   } finally {
