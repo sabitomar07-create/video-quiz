@@ -51,7 +51,7 @@ async function requestQuiz({ apiKey, model, parts }) {
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
     body: JSON.stringify({
       contents: [{ role: "user", parts }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0.3 },
+      generationConfig: { responseMimeType: "application/json", temperature: 0.3, maxOutputTokens: 16384 },
     }),
     signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
   });
@@ -74,7 +74,7 @@ async function startYoutubeInteraction(apiKey, url, count) {
         { type: "video", uri: url, processing: "static" },
         { type: "text", text: quizPrompt(count) },
       ],
-      generation_config: { temperature: 0.3 },
+      generation_config: { temperature: 0.3, max_output_tokens: 16384 },
     }),
     signal: AbortSignal.timeout(25_000),
   });
@@ -115,7 +115,7 @@ async function pollYoutubeInteraction(apiKey, id, count) {
   if (payload.status === "in_progress" || payload.status === "queued" || payload.status === "running") {
     return { status: 202, body: { status: payload.status } };
   }
-  if (payload.status === "failed" || payload.status === "cancelled") {
+  if (payload.status === "incomplete") {\n    return { status: 502, body: { error: "Gemini stopped before finishing the full quiz. Please try again." } };\n  }\n  if (payload.status === "failed" || payload.status === "cancelled") {
     return { status: 502, body: { error: payload.error?.message || "Gemini couldn't finish analyzing this video. Try again in a moment." } };
   }
   if (payload.status !== "completed") return { status: 202, body: { status: payload.status || "in_progress" } };
