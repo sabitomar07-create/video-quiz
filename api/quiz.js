@@ -187,7 +187,7 @@ export default async function handler(req, res) {
         const text = bytes.toString("utf8");
         if (!text.trim()) return send(res, 400, { error: `${name} is empty or couldn't be read.` });
         if (bytes.length > MAX_TEXT_BYTES) return send(res, 400, { error: "Each TXT file must be 250 KB or smaller." });
-        parts.push({ text: `Uploaded text file: ${name}\\n\\n${text}` });
+        parts.push({ text: `Uploaded text file: ${name}\n\n${text}` });
       } else {
         parts.push({ inlineData: { mimeType, data: bytes.toString("base64") } });
       }
