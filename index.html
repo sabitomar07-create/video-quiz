@@ -35,6 +35,22 @@ input[type=url]{flex:1 1 280px;min-width:0}
 button{font-weight:700;font-size:1rem;padding:14px 22px;border:2px solid var(--ink);background:var(--ink);color:var(--paper);border-radius:10px;cursor:pointer}
 button:disabled{opacity:.4;cursor:not-allowed}
 button.ghost{background:transparent;color:var(--ink)}
+.source-tabs{display:flex;gap:8px;margin:0 0 12px}
+button.source-tab{padding:9px 14px;background:var(--card);color:var(--muted);border:1px solid var(--line);font-size:.95rem}
+button.source-tab[aria-pressed="true"]{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.upload-drop{display:flex;min-height:132px;flex-direction:column;align-items:center;justify-content:center;gap:5px;padding:18px;border:2px dashed var(--muted);border-radius:12px;background:var(--card);text-align:center;cursor:pointer}
+.upload-drop:hover,.upload-drop.dragging{border-color:var(--ink);background:var(--paper)}
+.upload-drop strong{font-family:"Bricolage Grotesque","Cairo",system-ui,sans-serif}
+.upload-drop span,.upload-help,.file-item{color:var(--muted);font-size:.9rem}
+.file-input{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;clip-path:inset(50%)}
+.file-list{display:grid;gap:6px;margin-top:10px}
+.file-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;background:var(--card);border:1px solid var(--line);border-radius:8px;overflow-wrap:anywhere}
+.file-item span{min-width:0}
+.file-clear{padding:5px 9px;font-size:.85rem;flex:none}
+.upload-help{margin:8px 0 0}
+.upload-error{color:var(--bad);font-size:.9rem;font-weight:600;margin:8px 0 0}
+.or-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem;margin:10px 0}
+.or-divider::before,.or-divider::after{content:"";height:1px;background:var(--line);flex:1}
 :focus-visible{outline:3px solid var(--hl);outline-offset:2px}
 .err{color:var(--bad);margin-top:14px;font-weight:600}
 .hidden{display:none}
@@ -70,9 +86,28 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
 
 <section id="home">
   <h1>Watch it. Then <mark>prove</mark> you got it.</h1>
-  <p class="lead">Paste a YouTube lesson. The AI watches the whole video and writes a quiz. Wrong answers are explained, and you can't move on until you get the question right.</p>
+  <p class="lead">Use a YouTube lesson or upload study material. The AI makes a quiz from it. Wrong answers are explained, and you can't move on until you get the question right.</p>
+  <div class="source-tabs" role="group" aria-label="Choose quiz source">
+    <button id="youtube-tab" class="source-tab" type="button" aria-pressed="true">YouTube link</button>
+    <button id="upload-tab" class="source-tab" type="button" aria-pressed="false">Files or photos</button>
+  </div>
+  <div id="youtube-source">
   <div class="row">
     <input id="url" type="url" placeholder="https://www.youtube.com/watch?v=..." aria-label="YouTube link">
+  </div>
+  </div>
+  <div id="upload-source" class="hidden">
+    <label class="upload-drop" id="dropzone" for="files">
+      <input id="files" class="file-input" type="file" multiple accept=".pdf,.txt,.jpg,.jpeg,.png,.webp,.heic,.heif,application/pdf,text/plain,image/jpeg,image/png,image/webp,image/heic,image/heif">
+      <strong>Choose files or photos</strong>
+      <span>or drag them here</span>
+    </label>
+    <p class="upload-help">JPG, PNG, WEBP, HEIC, PDF, or TXT · up to 5 files · 2.5 MB total · TXT up to 250 KB</p>
+    <div id="file-list" class="file-list" aria-live="polite"></div>
+    <p id="upload-error" class="upload-error hidden" role="alert"></p>
+  </div>
+  <div class="or-divider"><span>Quiz size</span></div>
+  <div class="row">
     <select id="count" aria-label="Number of questions">
       <option value="5">5 questions</option>
       <option value="8" selected>8 questions</option>
@@ -106,21 +141,133 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
 <script>
 const $ = (id) => document.getElementById(id);
 let quiz, videoUrl, queue, idx, missed, firstTry, total, roundNo, current, order;
+let sourceMode = "youtube";
+let selectedFiles = [];
+const MAX_UPLOAD_BYTES = 2.5 * 1024 * 1024;
+const FILE_TYPES = {
+  "image/jpeg": [".jpg", ".jpeg"],
+  "image/png": [".png"],
+  "image/webp": [".webp"],
+  "image/heic": [".heic"],
+  "image/heif": [".heif"],
+  "application/pdf": [".pdf"],
+  "text/plain": [".txt"],
+};
 
 const shuffle = (a) => { a = a.slice(); for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const fmt = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const show = (id) => ["home", "quiz", "done"].forEach((x) => $(x).classList.toggle("hidden", x !== id));
 
-$("go").onclick = async () => {
-  const url = $("url").value.trim();
+function setSourceMode(mode) {
+  sourceMode = mode;
+  const youtube = mode === "youtube";
+  $("youtube-tab").setAttribute("aria-pressed", String(youtube));
+  $("upload-tab").setAttribute("aria-pressed", String(!youtube));
+  $("youtube-source").classList.toggle("hidden", !youtube);
+  $("upload-source").classList.toggle("hidden", youtube);
   $("err").classList.add("hidden");
+}
+
+function mimeFor(file) {
+  if (Object.hasOwn(FILE_TYPES, file.type)) return file.type;
+  const name = file.name.toLowerCase();
+  return Object.entries(FILE_TYPES).find(([, exts]) => exts.some((ext) => name.endsWith(ext)))?.[0] || "";
+}
+
+function setFiles(fileList) {
+  const files = Array.from(fileList || []);
+  const error = $("upload-error");
+  error.classList.add("hidden");
+  if (files.length > 5) {
+    selectedFiles = [];
+    error.textContent = "Choose no more than 5 files.";
+    error.classList.remove("hidden");
+  } else if (files.some((file) => !mimeFor(file))) {
+    selectedFiles = [];
+    error.textContent = "Use JPG, PNG, WEBP, HEIC, PDF, or TXT files.";
+    error.classList.remove("hidden");
+  } else if (files.reduce((sum, file) => sum + file.size, 0) > MAX_UPLOAD_BYTES) {
+    selectedFiles = [];
+    error.textContent = "These files are over the 2.5 MB total limit. Choose smaller files.";
+    error.classList.remove("hidden");
+  } else {
+    selectedFiles = files;
+  }
+  renderFiles();
+}
+
+function renderFiles() {
+  const list = $("file-list");
+  list.replaceChildren();
+  selectedFiles.forEach((file) => {
+    const row = document.createElement("div");
+    row.className = "file-item";
+    const name = document.createElement("span");
+    name.textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
+    row.appendChild(name);
+    list.appendChild(row);
+  });
+  if (selectedFiles.length) {
+    const clear = document.createElement("button");
+    clear.type = "button";
+    clear.className = "ghost file-clear";
+    clear.textContent = "Clear files";
+    clear.onclick = () => { selectedFiles = []; $("files").value = ""; renderFiles(); };
+    list.appendChild(clear);
+  }
+}
+
+async function encodeFile(file) {
+  const mimeType = mimeFor(file);
+  if (mimeType === "text/plain") {
+    return { name: file.name, mimeType, text: await file.text() };
+  }
+  const data = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error(`Couldn't read ${file.name}. Try selecting it again.`));
+    reader.onload = () => resolve(String(reader.result).split(",", 2)[1] || "");
+    reader.readAsDataURL(file);
+  });
+  return { name: file.name, mimeType, data };
+}
+
+$("youtube-tab").onclick = () => setSourceMode("youtube");
+$("upload-tab").onclick = () => setSourceMode("upload");
+$("files").onchange = (event) => setFiles(event.target.files);
+$("dropzone").ondragover = (event) => { event.preventDefault(); $("dropzone").classList.add("dragging"); };
+$("dropzone").ondragleave = () => $("dropzone").classList.remove("dragging");
+$("dropzone").ondrop = (event) => {
+  event.preventDefault();
+  $("dropzone").classList.remove("dragging");
+  setFiles(event.dataTransfer.files);
+};
+
+$("go").onclick = async () => {
+  const url = sourceMode === "youtube" ? $("url").value.trim() : "";
+  $("err").classList.add("hidden");
+  $("upload-error").classList.add("hidden");
+  if (sourceMode === "youtube" && !url) {
+    $("err").textContent = "Paste a YouTube link first.";
+    $("err").classList.remove("hidden");
+    return;
+  }
+  if (sourceMode === "upload" && !selectedFiles.length) {
+    $("upload-error").textContent = "Choose at least one file or photo first.";
+    $("upload-error").classList.remove("hidden");
+    return;
+  }
   $("go").disabled = true;
-  $("go").innerHTML = '<span class="spin"></span>Watching the video...';
+  $("go").innerHTML = sourceMode === "youtube"
+    ? '<span class="spin"></span>Watching the video...'
+    : '<span class="spin"></span>Reading your files...';
   try {
+    const files = sourceMode === "upload" ? await Promise.all(selectedFiles.map(encodeFile)) : [];
+    const body = JSON.stringify({ url, files, count: $("count").value });
+    if (new Blob([body]).size > 4 * 1024 * 1024) throw new Error("This upload is too large to send. Choose smaller files.");
     const r = await fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ url, count: $("count").value }),
+      body,
     });
     const raw = await r.text();
     let data;
@@ -128,7 +275,7 @@ $("go").onclick = async () => {
       throw new Error("The backend is not running here (got a web page instead of quiz data). Open the deployed Vercel link, or run with 'vercel dev'. Status: " + r.status);
     }
     if (!r.ok) throw new Error(data.error || "Something went wrong");
-    quiz = data; videoUrl = url; start();
+    quiz = data; videoUrl = url || null; start();
   } catch (e) {
     $("err").textContent = e.message;
     $("err").classList.remove("hidden");
@@ -170,7 +317,15 @@ function ask() {
 }
 
 function link(q) {
-  return `<a href="${videoUrl}${videoUrl.includes("?") ? "&" : "?"}t=${Math.floor(q.seconds || 0)}s" target="_blank" rel="noopener">Rewatch at ${fmt(q.seconds || 0)}</a>`;
+  if (!videoUrl) return null;
+  const target = new URL(videoUrl);
+  target.searchParams.set("t", `${Math.floor(q.seconds || 0)}s`);
+  const anchor = document.createElement("a");
+  anchor.href = target.toString();
+  anchor.target = "_blank";
+  anchor.rel = "noopener";
+  anchor.textContent = `Rewatch at ${fmt(q.seconds || 0)}`;
+  return anchor;
 }
 
 function pick(btn, orig) {
@@ -181,7 +336,10 @@ function pick(btn, orig) {
     if (!current.slipped && !current.isRetry) firstTry++;
     if (current.slipped && !missed.includes(current)) missed.push(current);
     note.className = "note ok";
-    note.innerHTML = `<b>Correct.</b> ${current.explanations[orig]} ${link(current)}`;
+    note.replaceChildren();
+    const label = document.createElement("b"); label.textContent = "Correct.";
+    note.append(label, document.createTextNode(` ${current.explanations[orig] || ""} `));
+    const rewatch = link(current); if (rewatch) note.appendChild(rewatch);
     $("next").textContent = idx + 1 < queue.length ? "Next question" : "Finish";
     $("next").classList.remove("hidden");
     $("next").focus();
@@ -189,7 +347,12 @@ function pick(btn, orig) {
     current.slipped = true;
     btn.classList.add("wrong"); btn.disabled = true;
     note.className = "note";
-    note.innerHTML = `<b>Not quite.</b> ${current.explanations[orig]} <br>Try again. ${link(current)}`;
+    note.replaceChildren();
+    const label = document.createElement("b"); label.textContent = "Not quite.";
+    note.append(label, document.createTextNode(` ${current.explanations[orig] || ""} `));
+    const retry = document.createElement("span"); retry.textContent = "Try again.";
+    note.appendChild(retry);
+    const rewatch = link(current); if (rewatch) { note.appendChild(document.createElement("br")); note.appendChild(rewatch); }
   }
   note.classList.remove("hidden");
 }
@@ -212,11 +375,12 @@ function finish() {
   $("verdict").textContent = firstTry === total
     ? "Perfect on the first try. You understood this video."
     : "You got every question right in the end, including the ones you missed. That is how it sticks.";
-  $("sum").innerHTML = `<b>${quiz.title || "Video"}</b><br>${quiz.summary || ""}`;
+  const title = document.createElement("b"); title.textContent = quiz.title || "Study material";
+  $("sum").replaceChildren(title, document.createElement("br"), document.createTextNode(quiz.summary || ""));
 }
 
-$("again").onclick = () => { $("url").value = ""; show("home"); };
-$("url").addEventListener("keydown", (e) => { if (e.key === "Enter") $("go").click(); });
+$("again").onclick = () => { $("url").value = ""; selectedFiles = []; $("files").value = ""; renderFiles(); show("home"); };
+$("url").addEventListener("keydown", (e) => { if (sourceMode === "youtube" && e.key === "Enter") $("go").click(); });
 </script>
 </body>
 </html>
