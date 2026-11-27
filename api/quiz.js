@@ -24,11 +24,10 @@ function isYoutubeUrl(value) {
 }
 
 function parseModelJson(text) {
-  const cleaned = text.trim().replace(/^\`\`\`(?:json)?\\s*/i, "").replace(/\\s*\`\`\`$/, "");
-  const start = cleaned.indexOf("{");
-  const end = cleaned.lastIndexOf("}");
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
   if (start < 0 || end <= start) throw new Error("Gemini returned invalid JSON.");
-  return JSON.parse(cleaned.slice(start, end + 1));
+  return JSON.parse(text.slice(start, end + 1));
 }
 
 function validateQuiz(quiz, count) {
@@ -99,10 +98,11 @@ function interactionText(interaction) {
   return outputs.join("\\n").trim();
 }
 
-async function pollYoutubeInteraction(apiKey, id) {
+async function pollYoutubeInteraction(apiKey, id, count) {
   if (typeof id !== "string" || !/^v1_[A-Za-z0-9_-]+$/.test(id)) {
     return { status: 400, body: { error: "Invalid video processing ID." } };
   }
+  if (![5, 8, 12].includes(count)) return { status: 400, body: { error: "Invalid quiz size." } };
   const response = await fetch(`${INTERACTIONS_URL}/${encodeURIComponent(id)}`, {
     headers: { "x-goog-api-key": apiKey },
     signal: AbortSignal.timeout(20_000),
@@ -118,23 +118,11 @@ async function pollYoutubeInteraction(apiKey, id) {
   if (payload.status === "failed" || payload.status === "cancelled") {
     return { status: 502, body: { error: payload.error?.message || "Gemini couldn't finish analyzing this video. Try again in a moment." } };
   }
-  if (payload.status !== "completed") {
-    return { status: 202, body: { status: payload.status || "in_progress" } };
-  }
+  if (payload.status !== "completed") return { status: 202, body: { status: payload.status || "in_progress" } };
   try {
-    const quiz = validateQuiz(parseModelJson(interactionText(payload)), Number(payload.metadata?.question_count) || 0);
-    return { status: 200, body: quiz };
+    return { status: 200, body: validateQuiz(parseModelJson(interactionText(payload)), count) };
   } catch (error) {
-    // The requested count is stored in the interaction's input, so infer it from the generated quiz
-    // and validate the fixed quiz shape here; the POST route already validated the requested count.
-    try {
-      const quiz = parseModelJson(interactionText(payload));
-      if (!Array.isArray(quiz.questions) || !quiz.questions.length) throw error;
-      validateQuiz(quiz, quiz.questions.length);
-      return { status: 200, body: quiz };
-    } catch {
-      return { status: 502, body: { error: error.message || "Gemini returned an invalid quiz. Please try again." } };
-    }
+    return { status: 502, body: { error: error.message || "Gemini returned an invalid quiz. Please try again." } };
   }
 }
 
@@ -143,7 +131,7 @@ export default async function handler(req, res) {
   if (!apiKey) return send(res, 503, { error: "Quiz generation is not configured yet. Add GEMINI_API_KEY in this Vercel project's Environment Variables." });
 
   if (req.method === "GET") {
-    const result = await pollYoutubeInteraction(apiKey, req.query?.id);
+    const result = await pollYoutubeInteraction(apiKey, req.query?.id, Number(req.query?.count));
     return send(res, result.status, result.body);
   }
   if (req.method !== "POST") {
