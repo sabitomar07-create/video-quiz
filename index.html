@@ -260,19 +260,30 @@ function mimeFor(file) {
 }
 
 function setFiles(fileList) {
-  const files = Array.from(fileList || []);
+  const incoming = Array.from(fileList || []);
   const error = $("upload-error");
   error.classList.add("hidden");
+
+  // Each picker interaction returns only the newly selected files.
+  // Append them to the existing selection instead of replacing it.
+  const fileKey = (file) => `${file.name}::${file.size}::${file.lastModified}`;
+  const seen = new Set(selectedFiles.map(fileKey));
+  const files = [...selectedFiles];
+  for (const file of incoming) {
+    const key = fileKey(file);
+    if (!seen.has(key)) {
+      files.push(file);
+      seen.add(key);
+    }
+  }
+
   if (files.length > 5) {
-    selectedFiles = [];
-    error.textContent = "Choose no more than 5 files.";
+    error.textContent = "You can upload up to 5 files total. Remove a file before adding another.";
     error.classList.remove("hidden");
   } else if (files.some((file) => !mimeFor(file))) {
-    selectedFiles = [];
     error.textContent = "Use JPG, PNG, WEBP, HEIC, PDF, or TXT files.";
     error.classList.remove("hidden");
   } else if (files.reduce((sum, file) => sum + file.size, 0) > MAX_UPLOAD_BYTES) {
-    selectedFiles = [];
     error.textContent = "These files are over the 2.5 MB total limit. Choose smaller files.";
     error.classList.remove("hidden");
   } else {
@@ -318,7 +329,11 @@ async function encodeFile(file) {
 
 $("youtube-tab").onclick = () => setSourceMode("youtube");
 $("upload-tab").onclick = () => setSourceMode("upload");
-$("files").onchange = (event) => setFiles(event.target.files);
+$("files").onchange = (event) => {
+  setFiles(event.target.files);
+  // Allow choosing the same photo again after removing it.
+  event.target.value = "";
+};
 $("dropzone").ondragover = (event) => { event.preventDefault(); $("dropzone").classList.add("dragging"); };
 $("dropzone").ondragleave = () => $("dropzone").classList.remove("dragging");
 $("dropzone").ondrop = (event) => {
