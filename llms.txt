@@ -4,6 +4,10 @@
 
 ## Website
 - Homepage: https://video-quiz-rose.vercel.app/
+- YouTube video to quiz: https://video-quiz-rose.vercel.app/youtube-video-to-quiz/
+- AI quiz generator for teachers: https://video-quiz-rose.vercel.app/ai-quiz-generator-for-teachers/
+- Long video quiz generator: https://video-quiz-rose.vercel.app/long-video-quiz-generator/
+- How to make a quiz from a video: https://video-quiz-rose.vercel.app/how-to-make-a-quiz-from-a-video/
 
 ## What it does
 - Generates multiple-choice quizzes from YouTube videos.
