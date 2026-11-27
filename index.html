@@ -3,7 +3,38 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Video Quiz</title>
+<title>Video Quiz — AI YouTube Video to Quiz Generator</title>
+<meta name="description" content="Turn YouTube videos, lectures, and study materials into interactive multiple-choice quizzes with AI. Review explanations, learn from mistakes, and test what you understood.">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<link rel="canonical" href="https://video-quiz-rose.vercel.app/">
+<meta name="application-name" content="Video Quiz">
+<meta name="theme-color" content="#f3f1ec">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Video Quiz">
+<meta property="og:title" content="Video Quiz — Turn YouTube Videos Into Quizzes">
+<meta property="og:description" content="Create interactive quizzes from YouTube lessons and study materials. Get explanations and review the questions you missed.">
+<meta property="og:url" content="https://video-quiz-rose.vercel.app/">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Video Quiz — AI YouTube Video to Quiz Generator">
+<meta name="twitter:description" content="Turn YouTube lessons and study materials into interactive quizzes with AI.">
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebApplication",
+  "name": "Video Quiz",
+  "url": "https://video-quiz-rose.vercel.app/",
+  "applicationCategory": "EducationalApplication",
+  "operatingSystem": "Any",
+  "description": "An AI-powered quiz generator that turns YouTube videos and uploaded study materials into interactive multiple-choice quizzes with explanations and review rounds.",
+  "featureList": [
+    "Generate multiple-choice quizzes from YouTube videos",
+    "Create quizzes from PDF, text, and image study materials",
+    "Explain incorrect and correct answer choices",
+    "Review missed questions",
+    "Link video questions to relevant timestamps"
+  ]
+}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@500;700;800&family=Newsreader:ital,wght@0,400;0,600;1,400&family=Cairo:wght@400;600;700&display=swap" rel="stylesheet">
@@ -52,6 +83,14 @@ button.source-tab[aria-pressed="true"]{background:var(--ink);color:var(--paper);
 .or-divider{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:.85rem;margin:10px 0}
 .or-divider::before,.or-divider::after{content:"";height:1px;background:var(--line);flex:1}
 :focus-visible{outline:3px solid var(--hl);outline-offset:2px}
+.seo-content{margin-top:64px;padding-top:30px;border-top:1px solid var(--line)}
+.seo-content h2{margin:0 0 12px}
+.seo-content h3{font-family:"Bricolage Grotesque","Cairo",system-ui,sans-serif;font-size:1.12rem;line-height:1.3;margin:24px 0 6px}
+.seo-content p{color:var(--muted);max-width:68ch;margin:0 0 12px}
+.seo-faq{margin-top:28px}
+.seo-faq details{padding:14px 0;border-bottom:1px solid var(--line)}
+.seo-faq summary{font-family:"Bricolage Grotesque","Cairo",system-ui,sans-serif;font-weight:700;cursor:pointer}
+.seo-faq details p{margin:10px 0 0}
 .err{color:var(--bad);margin-top:14px;font-weight:600}
 .hidden{display:none}
 .bar{height:6px;background:var(--line);border-radius:3px;margin:0 0 28px;overflow:hidden}
@@ -133,6 +172,44 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
   <div class="summary" id="sum" dir="auto"></div>
   <div class="row">
     <button id="again">Quiz another video</button>
+  </div>
+</section>
+
+<section class="seo-content" aria-labelledby="how-it-works">
+  <h2 id="how-it-works">Turn a YouTube video into a quiz with AI</h2>
+  <p>Video Quiz helps you check what you understood from a lesson, tutorial, lecture, or other YouTube video. Paste a video link, choose how many questions you want, and let AI prepare a multiple-choice quiz based on the source material.</p>
+
+  <h3>Study actively instead of just watching</h3>
+  <p>Answer each question, read the explanations, and try again when you make a mistake. Questions can include links back to the relevant point in the video, making it easier to revisit the lesson and understand the answer.</p>
+
+  <h3>Create quizzes from your study materials</h3>
+  <p>Have notes, a PDF, a text file, or photos of study material? You can upload supported files and use them as the source for a quiz. Video Quiz is designed for students, independent learners, and anyone who wants to turn learning material into active practice.</p>
+
+  <h3>How to make a quiz from a YouTube video</h3>
+  <p>Copy the YouTube video URL, paste it into the box above, select 5, 8, or 12 questions, and choose <strong>Make quiz</strong>. Work through the questions and review any mistakes before finishing.</p>
+
+  <div class="seo-faq" aria-labelledby="faq-heading">
+    <h2 id="faq-heading">Frequently asked questions</h2>
+    <details>
+      <summary>How do I turn a YouTube video into a quiz?</summary>
+      <p>Paste the YouTube link into Video Quiz, select the number of questions, and press Make quiz. The AI analyzes the video and creates multiple-choice questions for you to answer.</p>
+    </details>
+    <details>
+      <summary>Can Video Quiz make questions from long videos?</summary>
+      <p>Video Quiz supports background processing for YouTube video analysis, which helps it handle lessons that take longer to analyze. Processing time and availability can depend on the video and the AI service.</p>
+    </details>
+    <details>
+      <summary>Can I create a quiz from a PDF or photos?</summary>
+      <p>Yes. Choose Files or photos and upload supported PDF, TXT, JPG, PNG, WEBP, or HEIC study materials within the upload limits shown on the page.</p>
+    </details>
+    <details>
+      <summary>Does Video Quiz explain wrong answers?</summary>
+      <p>Yes. When you choose an incorrect option, Video Quiz displays an explanation and lets you try again. Missed questions return in a review round.</p>
+    </details>
+    <details>
+      <summary>Can I use Video Quiz for studying?</summary>
+      <p>Yes. You can use it to practice after watching educational videos, reviewing lectures, or studying from supported documents and images.</p>
+    </details>
   </div>
 </section>
 
