@@ -1,5 +1,4 @@
-import { issueSignedToken } from "@vercel/blob";
-import { handleUploadPresigned } from "@vercel/blob/client";
+import { handleUpload } from "@vercel/blob/client";
 
 const MAX_FILE_BYTES = 15 * 1024 * 1024;
 const ALLOWED_TYPES = [
@@ -14,63 +13,32 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Vercel's /api/*.js files use the Node.js Pages API signature.
-    // handleUploadPresigned expects a Web Request, so adapt the incoming
-    // Node request instead of passing IncomingMessage directly.
-    const payload = req.body && typeof req.body === "object" ? req.body : {};
-    const headers = new Headers();
-    for (const [key, value] of Object.entries(req.headers || {})) {
-      if (typeof value === "string") headers.set(key, value);
-      else if (Array.isArray(value)) headers.set(key, value.join(", "));
-    }
-    if (!headers.has("content-type")) {
-      headers.set("content-type", "application/json");
+    // Vercel Pages API routes provide a parsed body and IncomingMessage.
+    const body = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+    if (!body || typeof body !== "object" || Array.isArray(body)) {
+      return res.status(400).json({ error: "Invalid upload request body." });
     }
 
-    const host = headers.get("x-forwarded-host") || headers.get("host") || "localhost";
-    const protocol = headers.get("x-forwarded-proto") || "https";
-    const requestUrl = new URL(req.url || "/api/upload", `${protocol}://${host}`);
-    const webRequest = new Request(requestUrl, {
-      method: "POST",
-      headers,
-      body: JSON.stringify(payload),
-    });
-
-    const result = await handleUploadPresigned({
-      body: payload,
-      request: webRequest,
-      getSignedToken: async (pathname) => {
+    const result = await handleUpload({
+      body,
+      request: req,
+      onBeforeGenerateToken: async (pathname) => {
         if (typeof pathname !== "string" || !pathname.startsWith("quiz-uploads/")
           || pathname.includes("..") || pathname.length > 240) {
           throw new Error("Invalid upload path.");
         }
 
-        // The URL expiry must be earlier than the delegation token expiry.
-        const delegationValidUntil = Date.now() + 15 * 60 * 1000;
-        const uploadValidUntil = Date.now() + 10 * 60 * 1000;
-        const token = await issueSignedToken({
-          pathname,
-          operations: ["put"],
+        return {
           allowedContentTypes: ALLOWED_TYPES,
           maximumSizeInBytes: MAX_FILE_BYTES,
-          validUntil: delegationValidUntil,
-        });
-
-        return {
-          token,
-          urlOptions: {
-            allowedContentTypes: ALLOWED_TYPES,
-            maximumSizeInBytes: MAX_FILE_BYTES,
-            validUntil: uploadValidUntil,
-            allowOverwrite: false,
-          },
+          validUntil: Date.now() + 10 * 60 * 1000,
         };
       },
     });
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("[blob-upload] presigned URL generation failed:", error);
+    console.error("[blob-upload] client token generation failed:", error);
     return res.status(400).json({
       error: error?.message || "Upload authorization failed.",
     });
