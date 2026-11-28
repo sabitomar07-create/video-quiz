@@ -146,14 +146,8 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
     <div id="file-list" class="file-list" aria-live="polite"></div>
     <p id="upload-error" class="upload-error hidden" role="alert"></p>
   </div>
-  <div class="or-divider"><span>Quiz size</span></div>
+  <div class="or-divider"><span>Question type</span></div>
   <div class="row">
-    <select id="count" aria-label="Number of questions">
-      <option value="5">5 questions</option>
-      <option value="8" selected>8 questions</option>
-      <option value="12">12 questions</option>
-      <option value="25">25 questions</option>
-    </select>
     <select id="question-type" aria-label="Question type">
       <option value="mixed" selected>Mixed question types</option>
       <option value="multiple_choice">Choose the correct answer</option>
@@ -161,6 +155,15 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
       <option value="next_verse">What comes next? · ما الآية التالية؟</option>
       <option value="arrange_verses">Arrange verses · رتّب الآيات</option>
       <option value="true_false">True or false · صح أم خطأ</option>
+    </select>
+  </div>
+  <div class="or-divider"><span>Quiz size</span></div>
+  <div class="row">
+    <select id="count" aria-label="Number of questions">
+      <option value="5">5 questions</option>
+      <option value="8" selected>8 questions</option>
+      <option value="12">12 questions</option>
+      <option value="25">25 questions</option>
     </select>
     <button id="go">Make quiz</button>
   </div>
