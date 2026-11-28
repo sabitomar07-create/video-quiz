@@ -154,6 +154,14 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
       <option value="12">12 questions</option>
       <option value="25">25 questions</option>
     </select>
+    <select id="question-type" aria-label="Question type">
+      <option value="mixed" selected>Mixed question types</option>
+      <option value="multiple_choice">Choose the correct answer</option>
+      <option value="complete_verse">Complete the verse · أكمل الآية</option>
+      <option value="next_verse">What comes next? · ما الآية التالية؟</option>
+      <option value="arrange_verses">Arrange verses · رتّب الآيات</option>
+      <option value="true_false">True or false · صح أم خطأ</option>
+    </select>
     <button id="go">Make quiz</button>
   </div>
   <div id="err" class="err hidden" role="alert"></div>
@@ -367,7 +375,8 @@ $("go").onclick = async () => {
       }
     }
     const files = uploadedFiles;
-    const body = JSON.stringify({ url, files, count: $("count").value });
+    const questionType = $("question-type").value;
+    const body = JSON.stringify({ url, files, count: $("count").value, questionType });
     const r = await fetch("/api/quiz", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -383,6 +392,7 @@ $("go").onclick = async () => {
     if (r.status === 202 && data.interactionId) {
       const interactionId = data.interactionId;
       const count = $("count").value;
+      const questionType = $("question-type").value;
       const deadline = Date.now() + 30 * 60 * 1000;
       let pollNumber = 0;
       while (Date.now() < deadline) {
@@ -391,7 +401,7 @@ $("go").onclick = async () => {
         $("go").innerHTML = pollNumber % 3 === 0
           ? '<span class="spin"></span>Checking the full lesson...'
           : '<span class="spin"></span>Gemini is studying the video...';
-        const statusResponse = await fetch(`/api/quiz?id=${encodeURIComponent(interactionId)}&count=${encodeURIComponent(count)}`, {
+        const statusResponse = await fetch(`/api/quiz?id=${encodeURIComponent(interactionId)}&count=${encodeURIComponent(count)}&questionType=${encodeURIComponent(questionType)}`, {
           method: "GET",
           cache: "no-store",
         });
@@ -442,7 +452,7 @@ function runRound(list, isReview) {
 
 function ask() {
   current = queue[idx];
-  order = shuffle([0, 1, 2, 3]);   // options reshuffled every time
+  order = shuffle(current.options.map((_, i) => i));   // supports 2-option and 4-option question styles
   current.slipped = false;
   $("q").textContent = current.question;
   $("count-label").textContent = `Question ${idx + 1} of ${queue.length}`;
