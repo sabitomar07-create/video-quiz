@@ -224,7 +224,7 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
 </main>
 
 <script type="module">
-import { uploadPresigned } from "https://esm.sh/@vercel/blob@2.4.0/client?bundle";
+import { upload } from "https://esm.sh/@vercel/blob@2.4.0/client?bundle";
 const $ = (id) => document.getElementById(id);
 let quiz, videoUrl, queue, idx, missed, firstTry, total, roundNo, current, order;
 let sourceMode = "youtube";
@@ -318,7 +318,7 @@ async function uploadFile(file) {
   const mimeType = mimeFor(file);
   const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(-120) || "upload";
   const pathname = `quiz-uploads/${crypto.randomUUID()}-${safeName}`;
-  const blob = await uploadPresigned(pathname, file, {
+  const blob = await upload(pathname, file, {
     access: "private",
     handleUploadUrl: "/api/upload",
     contentType: mimeType,
