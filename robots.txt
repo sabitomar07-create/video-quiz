@@ -1,8 +1,0 @@
-User-agent: *
-Allow: /
-Disallow: /api/
-
-User-agent: OAI-SearchBot
-Allow: /
-
-Sitemap: https://video-quiz-rose.vercel.app/sitemap.xml

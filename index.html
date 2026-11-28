@@ -152,8 +152,6 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
       <option value="mixed" selected>Mixed question types</option>
       <option value="multiple_choice">Choose the correct answer</option>
       <option value="complete_verse">Complete the verse · أكمل الآية</option>
-      <option value="next_verse">What comes next? · ما الآية التالية؟</option>
-      <option value="arrange_verses">Arrange verses · رتّب الآيات</option>
       <option value="true_false">True or false · صح أم خطأ</option>
     </select>
   </div>
@@ -235,8 +233,8 @@ h2{font-size:1.5rem;line-height:1.25;margin:0 0 22px;font-weight:700}
 </main>
 
 <script type="module">
-import { upload } from "https://esm.sh/@vercel/blob@2.4.0/client?bundle";
 const $ = (id) => document.getElementById(id);
+let blobUploadPromise;
 let quiz, videoUrl, queue, idx, missed, firstTry, total, roundNo, current, order;
 let sourceMode = "youtube";
 let selectedFiles = [];
@@ -329,6 +327,7 @@ async function uploadFile(file) {
   const mimeType = mimeFor(file);
   const safeName = file.name.replace(/[^A-Za-z0-9._-]/g, "_").slice(-120) || "upload";
   const pathname = `quiz-uploads/${crypto.randomUUID()}-${safeName}`;
+  const { upload } = await (blobUploadPromise ||= import("https://esm.sh/@vercel/blob@2.4.0/client?bundle"));
   const blob = await upload(pathname, file, {
     access: "private",
     handleUploadUrl: "/api/upload",

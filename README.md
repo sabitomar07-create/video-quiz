@@ -1,6 +1,6 @@
 # Video Quiz
 
-Paste a public YouTube lesson or upload photos (JPG, PNG, WEBP, HEIC), PDFs, or TXT files to generate a multiple-choice quiz. Uploads support up to five files and 2.5 MB total; TXT files are limited to 250 KB each. Wrong answers are explained, and each question must be answered correctly before continuing. Missed questions return in a review round.
+Paste a public YouTube lesson or upload photos (JPG, PNG, WEBP, HEIC), PDFs, or TXT files to generate a quiz. Uploads support up to five files and 15 MB total; TXT files are limited to 250 KB each. Choose mixed, multiple-choice, complete-the-verse, or true/false questions. The quiz does not include “what comes next” or arrange/order question styles. Wrong answers are explained, and each question must be answered correctly before continuing. Missed questions return in a review round.
 
 ## Long YouTube videos
 
